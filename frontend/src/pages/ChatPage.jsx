@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useChat } from '../hooks/useChat'
 import { getDocuments } from '../api/client'
 import { SendIcon, BookIcon, ChevronIcon, SearchIcon } from '../components/Icons'
+import { MarkdownRenderer } from '../components/MarkdownRenderer'
 
 function SourceCard({ chunk }) {
   const [open, setOpen] = useState(false)
@@ -29,8 +30,8 @@ function SourceCard({ chunk }) {
         </div>
       </button>
       {open && (
-        <div className="px-3 py-2 text-gray-400 whitespace-pre-wrap max-h-48 overflow-y-auto text-xs leading-relaxed border-t border-dark-border animate-fade-in">
-          {chunk.text}
+        <div className="px-3 py-2 text-gray-400 max-h-48 overflow-y-auto text-xs leading-relaxed border-t border-dark-border animate-fade-in">
+          <MarkdownRenderer content={chunk.text} />
         </div>
       )}
     </div>
@@ -64,14 +65,18 @@ function Message({ msg, sources }) {
         </div>
       )}
       <div className={`max-w-[75%] ${isUser ? 'order-first' : ''}`}>
-        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
           isUser
             ? 'bg-gradient-to-br from-brand-500 to-brand-700 text-white rounded-br-sm shadow-lg shadow-brand-500/15'
             : msg.error
               ? 'bg-red-500/10 text-red-300 border border-red-500/30 rounded-bl-sm'
               : 'surface-card text-gray-200 rounded-bl-sm'
         }`}>
-          {msg.content}
+          {isUser ? (
+            <span className='whitespace-pre-wrap'>{msg.content}</span>
+          ) : (
+            <MarkdownRenderer content={msg.content} />
+          )}
           {msg.streaming && <TypingDots />}
         </div>
         {!isUser && !msg.streaming && sources?.length > 0 && (
