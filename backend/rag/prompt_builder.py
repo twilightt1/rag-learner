@@ -13,6 +13,11 @@ When answering:
 - Reference specific parts of the context when relevant
 - If asked to explain a concept, structure your answer with clarity
 - Keep answers concise unless the student asks for depth
+- **For any mathematical expressions, use LaTeX notation:**
+  - Inline formulas: wrap with `\\( ... \\)`
+  - Display (block) formulas: wrap with `\\[ ... \\]`
+  - Example: `\\(x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\\)` or `\\[ \\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2} \\]`
+- This ensures formulas render beautifully and are easy to read
 
 At the end of your answer, you may note which source chunk(s) you drew from."""
 
