@@ -3,6 +3,8 @@
 Returns a list of page dicts: {page_num, text}
 Strips headers/footers heuristically by ignoring lines repeated across pages.
 """
+from __future__ import annotations
+
 from pathlib import Path
 from typing import List, Dict
 from collections import Counter

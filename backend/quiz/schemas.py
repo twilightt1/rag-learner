@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -21,8 +23,8 @@ class Flashcard(BaseModel):
 
 
 class QuizResult(BaseModel):
-    quiz_id: int
+    quiz_id: str
     quiz_type: str    # mcq | flashcard
-    doc_ids: List[int]
+    doc_ids: List[str]
     questions: List[MCQQuestion] = []
     flashcards: List[Flashcard] = []

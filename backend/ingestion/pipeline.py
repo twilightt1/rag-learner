@@ -3,6 +3,8 @@
 Flow: parse → chunk → embed → store (ChromaDB + SQLite)
 Updates document status throughout.
 """
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timezone
 from typing import List, Dict, Any
@@ -16,7 +18,7 @@ from backend.rag.embedder import embed_texts
 from backend.rag.vector_store import add_chunks
 
 
-def _update_status(doc_id: int, status: str, error_msg: str = None):
+def _update_status(doc_id: str, status: str, error_msg: str = None):
     with Session(engine) as db:
         doc = db.get(Document, doc_id)
         if doc:
@@ -27,10 +29,11 @@ def _update_status(doc_id: int, status: str, error_msg: str = None):
             db.commit()
 
 
-def _save_chunks(doc_id: int, chunks: List[Dict], chroma_ids: List[str]):
+def _save_chunks(doc_id: str, chunks: List[Dict], chroma_ids: List[str]):
     with Session(engine) as db:
         for chunk, chroma_id in zip(chunks, chroma_ids):
             db_chunk = Chunk(
+                id=chunk["uuid"],  # Use pre-generated UUID
                 doc_id=doc_id,
                 text=chunk["text"],
                 page_num=chunk.get("page_num"),
@@ -50,7 +53,7 @@ def _save_chunks(doc_id: int, chunks: List[Dict], chroma_ids: List[str]):
             db.commit()
 
 
-async def run_ingestion(doc_id: int):
+async def run_ingestion(doc_id: str):
     """Full async ingestion pipeline for a document."""
     _update_status(doc_id, "processing")
 
@@ -77,6 +80,11 @@ async def run_ingestion(doc_id: int):
         if not chunks:
             raise ValueError("Chunker returned no chunks")
 
+        # Assign UUIDs to chunks before storage (will be used as Chunk.id)
+        import uuid as _uuid
+        for chunk in chunks:
+            chunk["uuid"] = str(_uuid.uuid4())
+
         # Step 3: embed
         texts = [c["text"] for c in chunks]
         embeddings = await asyncio.to_thread(embed_texts, texts)
@@ -84,7 +92,7 @@ async def run_ingestion(doc_id: int):
         # Step 4: store in ChromaDB
         chroma_ids = add_chunks(chunks, embeddings)
 
-        # Step 5: store chunk records in SQLite
+        # Step 5: store chunk records in SQLite with the same UUIDs
         _save_chunks(doc_id, chunks, chroma_ids)
 
         _update_status(doc_id, "ready")

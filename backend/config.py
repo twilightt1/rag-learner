@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic_settings import BaseSettings
 from pathlib import Path
 from typing import List
@@ -30,7 +32,7 @@ class Settings(BaseSettings):
 
     # App
     app_env: str = "development"
-    cors_origins: List[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    cors_origins: List[str] = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5175"]
     max_upload_bytes: int = 50 * 1024 * 1024  # 50 MB
     log_level: str = "INFO"
 

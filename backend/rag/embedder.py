@@ -3,6 +3,8 @@
 Loads the model once at startup and provides encode() for both
 single strings and batches. Thread-safe via a module-level lock.
 """
+from __future__ import annotations
+
 import threading
 from typing import List, Union
 import numpy as np

@@ -6,13 +6,14 @@ import { QuizIcon, TrashIcon, SpinnerIcon, CheckIcon, XIcon } from '../component
 function MCQCard({ q, index }) {
   const [selected, setSelected] = useState(null)
   const answered = selected !== null
-  const correctIdx = q.options?.indexOf(q.answer)
+  const options = q.options || []
+  const correctIdx = options.findIndex(opt => opt.label === q.answer)
 
   return (
     <div className="surface-card p-5 animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
       <p className="text-sm font-medium text-gray-200 mb-3">{q.question}</p>
       <div className="space-y-2">
-        {q.options?.map((opt, i) => {
+        {options.map((opt, i) => {
           const isCorrect = i === correctIdx
           const isSelected = i === selected
           let style = 'border-dark-border text-gray-400 hover:bg-white/[0.03] hover:border-brand-500/30'
@@ -29,9 +30,9 @@ function MCQCard({ q, index }) {
               className={`w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-all duration-300 flex items-center gap-2 ${style}`}
             >
               <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center text-xs shrink-0">
-                {answered && isCorrect ? <CheckIcon className="w-3 h-3" /> : answered && isSelected ? <XIcon className="w-3 h-3" /> : String.fromCharCode(65 + i)}
+                {answered && isCorrect ? <CheckIcon className="w-3 h-3" /> : answered && isSelected ? <XIcon className="w-3 h-3" /> : opt.label}
               </span>
-              {opt}
+              {opt.text}
             </button>
           )
         })}
@@ -235,7 +236,7 @@ export default function QuizPage() {
                     onClick={() => handleLoadQuiz(q.id)}
                     className="text-sm text-gray-300 hover:text-brand-400 transition-colors truncate"
                   >
-                    {q.quiz_type?.toUpperCase()} · {q.n_questions} questions · {new Date(q.created_at).toLocaleDateString()}
+                    {q.quiz_type?.toUpperCase()} · {q.question_count} questions · {new Date(q.created_at).toLocaleDateString()}
                   </button>
                 </div>
                 <button

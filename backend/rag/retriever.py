@@ -6,6 +6,8 @@ Pipeline:
   3. Rerank with cross-encoder
   4. Return top_k_final chunks
 """
+from __future__ import annotations
+
 import threading
 from typing import List, Dict, Any, Optional
 
@@ -29,7 +31,7 @@ def get_reranker():
 
 def retrieve(
     query: str,
-    doc_ids: Optional[List[int]] = None,
+    doc_ids: Optional[List[str]] = None,
     top_k_retrieve: int = None,
     top_k_final: int = None,
 ) -> List[Dict[str, Any]]:
@@ -38,13 +40,13 @@ def retrieve(
 
     Args:
         query:          User's question string.
-        doc_ids:        Optional list to filter by specific documents.
+        doc_ids:        Optional list of document UUIDs to filter by.
         top_k_retrieve: Candidates to pull from ChromaDB.
         top_k_final:    Final chunks to return after reranking.
 
     Returns:
         List of chunk dicts sorted by relevance (best first):
-        {chroma_id, text, score, rerank_score, metadata}
+        {chroma_id, chunk_id, text, score, rerank_score, metadata}
     """
     top_k_retrieve = top_k_retrieve or settings.top_k_retrieve
     top_k_final = top_k_final or settings.top_k_final

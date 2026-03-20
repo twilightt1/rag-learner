@@ -1,4 +1,6 @@
 """Async OpenRouter client supporting both streaming and non-streaming completions."""
+from __future__ import annotations
+
 import json
 from typing import List, Dict, AsyncIterator
 
@@ -42,7 +44,7 @@ async def complete(
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         resp = await client.post(
-            f"{settings.openrouter_base_url}/chat/completions",
+            f"https://openrouter.ai/api/v1/chat/completions",
             headers=_get_headers(),
             json=payload,
         )
@@ -73,7 +75,7 @@ async def stream_complete(
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream(
             "POST",
-            f"{settings.openrouter_base_url}/chat/completions",
+            f"https://openrouter.ai/api/v1/chat/completions",
             headers=_get_headers(),
             json=payload,
         ) as resp:

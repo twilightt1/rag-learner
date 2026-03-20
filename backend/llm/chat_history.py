@@ -2,7 +2,9 @@
 
 Keeps a rolling window of messages to avoid blowing the context window.
 """
-from typing import List, Dict
+from __future__ import annotations
+
+from typing import List, Dict, Any
 from sqlmodel import Session, select
 
 from backend.database import Message, ChatSession, engine
@@ -11,7 +13,7 @@ from backend.database import Message, ChatSession, engine
 MAX_HISTORY_TURNS = 10   # Keep last N user+assistant pairs
 
 
-def load_history(session_id: int) -> List[Dict[str, str]]:
+def load_history(session_id: str) -> List[Dict[str, str]]:
     """Load recent message history for a session as OpenRouter-compatible dicts."""
     with Session(engine) as db:
         messages = db.exec(
@@ -28,18 +30,29 @@ def load_history(session_id: int) -> List[Dict[str, str]]:
 
 
 def save_message(
-    session_id: int,
+    session_id: str,
     role: str,
     content: str,
-    source_chunk_ids: List[int] = None,
+    source_metadata: List[Dict[str, Any]] = None,
 ) -> Message:
-    """Persist a message to SQLite."""
+    """
+    Persist a message to SQLite.
+
+    Args:
+        session_id: Session UUID string
+        role: "user" or "assistant"
+        content: Message text
+        source_metadata: Optional list of source chunk metadata dictionaries
+                      (will be stored as JSON in sources field as list of chroma_ids)
+    """
     import json
+    # Store list of chroma_ids directly to avoid DB lookup later
+    chroma_ids = [m["chroma_id"] for m in source_metadata] if source_metadata else []
     msg = Message(
         session_id=session_id,
         role=role,
         content=content,
-        sources=json.dumps(source_chunk_ids or []),
+        sources=json.dumps(chroma_ids),
     )
     with Session(engine) as db:
         db.add(msg)
@@ -48,7 +61,7 @@ def save_message(
     return msg
 
 
-def get_or_create_session(session_id: int = None, title: str = "New session") -> int:
+def get_or_create_session(session_id: str = None, title: str = "New session") -> str:
     """Return an existing session ID or create a new one."""
     from datetime import datetime, timezone
     with Session(engine) as db:

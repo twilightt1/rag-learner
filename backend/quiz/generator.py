@@ -3,9 +3,13 @@
 Samples random chunks from the selected documents and asks the LLM
 to produce MCQ or flashcard questions grounded in that content.
 """
+from __future__ import annotations
+
 import json
 import random
 from typing import List, Optional
+
+from fastapi import HTTPException
 
 from sqlmodel import Session, select
 
@@ -46,8 +50,11 @@ Respond with ONLY a JSON array, no markdown:
 ]"""
 
 
+ERROR_CORRECTION_PROMPT = """The previous response was invalid JSON. Please respond with ONLY a valid JSON array, no markdown fences, no explanations."""
+
+
 async def generate_quiz(
-    doc_ids: List[int],
+    doc_ids: List[str],
     quiz_type: str = "mcq",
     n_questions: int = 5,
 ) -> QuizResult:
@@ -61,6 +68,9 @@ async def generate_quiz(
 
     Returns:
         QuizResult with populated questions or flashcards.
+
+    Raises:
+        HTTPException: If LLM returns malformed JSON after retry.
     """
     # Sample chunks from the selected docs
     chunks = _sample_chunks(doc_ids, n_samples=min(n_questions * 3, 15))
@@ -80,17 +90,36 @@ async def generate_quiz(
         {"role": "user", "content": f"Source text:\n\n{context}"},
     ]
 
-    raw = await complete(messages, max_tokens=2048, temperature=0.7)
+    # First attempt
+    try:
+        raw = await complete(messages, max_tokens=2048, temperature=0.7)
+        data = _parse_json_response(raw)
+    except json.JSONDecodeError as e:
+        # Retry once with error correction
+        messages.append({"role": "assistant", "content": f"Previous response was invalid JSON: {e}"})
+        messages.append({"role": "user", "content": ERROR_CORRECTION_PROMPT})
+        try:
+            raw = await complete(messages, max_tokens=2048, temperature=0.7)
+            data = _parse_json_response(raw)
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=502,
+                detail="LLM returned malformed JSON after retry"
+            )
 
-    # Parse JSON response
-    raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip()
-
-    data = json.loads(raw)
+    # Validate structure based on quiz_type
+    if quiz_type == "mcq":
+        if not isinstance(data, list):
+            raise HTTPException(status_code=502, detail="Expected JSON array for MCQ")
+        for item in data:
+            if not all(k in item for k in ("question", "options", "answer")):
+                raise HTTPException(status_code=502, detail="MCQ missing required fields")
+    else:
+        if not isinstance(data, list):
+            raise HTTPException(status_code=502, detail="Expected JSON array for flashcards")
+        for item in data:
+            if not all(k in item for k in ("front", "back")):
+                raise HTTPException(status_code=502, detail="Flashcard missing required fields")
 
     mcq_questions = []
     flashcards = []
@@ -123,7 +152,33 @@ async def generate_quiz(
     )
 
 
-def _sample_chunks(doc_ids: List[int], n_samples: int) -> List[Chunk]:
+def _parse_json_response(raw: str) -> list:
+    """
+    Extract and parse JSON from LLM response.
+
+    Handles markdown code fences (```json ... ```).
+
+    Args:
+        raw: Raw LLM response string.
+
+    Returns:
+        Parsed JSON data (list).
+
+    Raises:
+        json.JSONDecodeError: If response is not valid JSON.
+    """
+    raw = raw.strip()
+    if raw.startswith("```"):
+        parts = raw.split("```")
+        if len(parts) >= 2:
+            raw = parts[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+    raw = raw.strip()
+    return json.loads(raw)
+
+
+def _sample_chunks(doc_ids: List[str], n_samples: int) -> List[Chunk]:
     with Session(engine) as db:
         query = select(Chunk)
         if doc_ids:

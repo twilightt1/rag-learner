@@ -3,6 +3,8 @@
 Falls back to line-based chunking if tree-sitter parsing fails.
 Supported: Python, JavaScript/TypeScript
 """
+from __future__ import annotations
+
 import re
 from pathlib import Path
 from typing import List, Dict, Tuple

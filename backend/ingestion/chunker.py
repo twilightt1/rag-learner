@@ -4,6 +4,8 @@ Uses tiktoken (cl100k_base) for token counting.
 Splits text blocks into overlapping chunks of `chunk_size` tokens
 with `chunk_overlap` token overlap between consecutive chunks.
 """
+from __future__ import annotations
+
 from typing import List, Dict, Any
 import re
 
@@ -80,7 +82,7 @@ def chunk_text(
 
 def chunk_blocks(
     blocks: List[Dict[str, Any]],
-    doc_id: int,
+    doc_id: str,
     source_type: str,
 ) -> List[Dict[str, Any]]:
     """

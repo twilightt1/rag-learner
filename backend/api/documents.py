@@ -6,6 +6,8 @@ GET  /api/documents/{id} — single document detail
 DELETE /api/documents/{id} — remove doc + all its chunks
 GET  /api/chunks        — list chunks (filterable by doc_id)
 """
+from __future__ import annotations
+
 import ipaddress
 import logging
 import os
@@ -61,8 +63,28 @@ def _validate_public_url(url: str) -> str:
     if not parsed.netloc:
         raise HTTPException(status_code=400, detail="Invalid URL — missing host")
 
-    # Resolve hostname and block private / loopback addresses
     hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Invalid URL — missing hostname")
+
+    # First, check if hostname is an IP literal to avoid DNS resolution timing
+    try:
+        ip = ipaddress.ip_address(hostname)
+        # It's an IP address — directly check if it's private
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            raise HTTPException(
+                status_code=400,
+                detail="URLs pointing to internal/private networks are not allowed",
+            )
+        # Public IP is fine; no DNS needed
+        return url
+    except ValueError:
+        # Not an IP literal, proceed to resolve domain name with timeout
+        pass
+
+    # Set a short timeout for DNS resolution to prevent hanging and reduce timing attack surface
+    old_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(2.0)
     try:
         resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
         for _family, _type, _proto, _canon, addr in resolved:
@@ -72,8 +94,12 @@ def _validate_public_url(url: str) -> str:
                     status_code=400,
                     detail="URLs pointing to internal/private networks are not allowed",
                 )
+    except socket.timeout:
+        raise HTTPException(status_code=400, detail="DNS resolution timed out")
     except socket.gaierror:
         raise HTTPException(status_code=400, detail=f"Cannot resolve hostname: {hostname}")
+    finally:
+        socket.setdefaulttimeout(old_timeout)
 
     return url
 
@@ -81,7 +107,7 @@ def _validate_public_url(url: str) -> str:
 # ── Response schemas ───────────────────────────────────────────────────────────
 
 class DocumentOut(BaseModel):
-    id: int
+    id: str
     filename: str
     source_type: str
     source_path: str
@@ -95,8 +121,8 @@ class DocumentOut(BaseModel):
 
 
 class ChunkOut(BaseModel):
-    id: int
-    doc_id: int
+    id: str
+    doc_id: str
     text: str
     page_num: Optional[int]
     chunk_index: int
@@ -188,7 +214,7 @@ async def ingest_url(
     db.commit()
     db.refresh(doc)
 
-    logger.info("URL ingestion queued: %s (doc_id=%d)", validated_url, doc.id)
+    logger.info("URL ingestion queued: %s (doc_id=%s)", validated_url, doc.id)
     background_tasks.add_task(run_ingestion, doc.id)
     return doc
 
@@ -200,7 +226,7 @@ def list_documents(db: Session = Depends(get_session)):
 
 
 @router.get("/documents/{doc_id}", response_model=DocumentOut)
-def get_document(doc_id: int, db: Session = Depends(get_session)):
+def get_document(doc_id: str, db: Session = Depends(get_session)):
     doc = db.get(Document, doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -208,7 +234,7 @@ def get_document(doc_id: int, db: Session = Depends(get_session)):
 
 
 @router.delete("/documents/{doc_id}", status_code=204)
-def delete_document(doc_id: int, db: Session = Depends(get_session)):
+def delete_document(doc_id: str, db: Session = Depends(get_session)):
     doc = db.get(Document, doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -230,12 +256,12 @@ def delete_document(doc_id: int, db: Session = Depends(get_session)):
 
     db.delete(doc)
     db.commit()
-    logger.info("Document deleted: id=%d filename=%s", doc_id, doc.filename)
+    logger.info("Document deleted: id=%s filename=%s", doc_id, doc.filename)
 
 
 @router.get("/chunks", response_model=List[ChunkOut])
 def list_chunks(
-    doc_id: Optional[int] = None,
+    doc_id: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_session),

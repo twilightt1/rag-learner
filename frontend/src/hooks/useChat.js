@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 
-const WS_URL = `ws://${window.location.host}/api/chat/ws`
+const WS_URL = `ws://${window.location.host}/api/chat/stream`
 const MAX_RETRIES = 5
 const BASE_DELAY = 1000
 
@@ -33,19 +33,19 @@ export function useChat(sessionId = null, filterDocIds = []) {
         setMessages(prev => {
           const last = prev[prev.length - 1]
           if (last?.role === 'assistant' && last.streaming) {
-            return [...prev.slice(0, -1), { ...last, content: last.content + msg.token }]
+            return [...prev.slice(0, -1), { ...last, content: last.content + msg.data }]
           }
-          return [...prev, { role: 'assistant', content: msg.token, streaming: true }]
+          return [...prev, { role: 'assistant', content: msg.data, streaming: true }]
         })
       } else if (msg.type === 'sources') {
-        setSources(msg.chunks || [])
+        setSources(msg.data || [])
       } else if (msg.type === 'done') {
         setMessages(prev =>
           prev.map((m, i) => i === prev.length - 1 && m.streaming ? { ...m, streaming: false } : m)
         )
         setStreaming(false)
       } else if (msg.type === 'error') {
-        setMessages(prev => [...prev, { role: 'assistant', content: msg.detail || 'Server error', error: true }])
+        setMessages(prev => [...prev, { role: 'assistant', content: msg.data || 'Server error', error: true }])
         setStreaming(false)
       }
     }
@@ -84,7 +84,7 @@ export function useChat(sessionId = null, filterDocIds = []) {
     setSources([])
     setStreaming(true)
 
-    const payload = { question }
+    const payload = { query: question }
     if (sessionId) payload.session_id = sessionId
     if (filterRef.current.length) payload.doc_ids = filterRef.current
 

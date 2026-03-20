@@ -1,4 +1,6 @@
 """Assembles the LLM prompt from retrieved context + chat history."""
+from __future__ import annotations
+
 from typing import List, Dict, Any
 
 SYSTEM_PROMPT = """You are a study assistant helping a student understand their course materials.

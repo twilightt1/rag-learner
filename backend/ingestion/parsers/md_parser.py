@@ -3,6 +3,8 @@
 For Markdown: splits on headings to preserve document structure.
 For plain text: splits on double newlines into paragraphs.
 """
+from __future__ import annotations
+
 import re
 from pathlib import Path
 from typing import List, Dict

@@ -5,6 +5,8 @@ GET  /api/quiz            — list all past quizzes
 GET  /api/quiz/{id}       — retrieve a quiz
 DELETE /api/quiz/{id}     — delete a quiz
 """
+from __future__ import annotations
+
 import json
 from typing import List, Optional
 from datetime import datetime
@@ -21,15 +23,15 @@ router = APIRouter(prefix="/api/quiz", tags=["quiz"])
 
 
 class GenerateQuizRequest(BaseModel):
-    doc_ids: List[int]
+    doc_ids: List[str]
     quiz_type: str = "mcq"       # mcq | flashcard
     n_questions: int = 5
 
 
 class QuizSummary(BaseModel):
-    id: int
+    id: str
     quiz_type: str
-    doc_ids: List[int]
+    doc_ids: List[str]
     question_count: int
     created_at: datetime
 
@@ -40,6 +42,8 @@ async def generate(request: GenerateQuizRequest):
         raise HTTPException(status_code=400, detail="quiz_type must be 'mcq' or 'flashcard'")
     if not 1 <= request.n_questions <= 20:
         raise HTTPException(status_code=400, detail="n_questions must be between 1 and 20")
+    if not request.doc_ids:
+        raise HTTPException(status_code=400, detail="At least one doc_id is required")
 
     result = await generate_quiz(
         doc_ids=request.doc_ids,
@@ -65,7 +69,7 @@ def list_quizzes(db: Session = Depends(get_session)):
 
 
 @router.get("/{quiz_id}", response_model=QuizResult)
-def get_quiz(quiz_id: int, db: Session = Depends(get_session)):
+def get_quiz(quiz_id: str, db: Session = Depends(get_session)):
     quiz = db.get(Quiz, quiz_id)
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
@@ -91,7 +95,7 @@ def get_quiz(quiz_id: int, db: Session = Depends(get_session)):
 
 
 @router.delete("/{quiz_id}", status_code=204)
-def delete_quiz(quiz_id: int, db: Session = Depends(get_session)):
+def delete_quiz(quiz_id: str, db: Session = Depends(get_session)):
     quiz = db.get(Quiz, quiz_id)
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")

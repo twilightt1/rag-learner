@@ -3,6 +3,8 @@
 Handles JS-rendered pages. Strips nav, footer, ads heuristically.
 Returns list of blocks compatible with the chunker.
 """
+from __future__ import annotations
+
 import re
 from typing import List, Dict
 

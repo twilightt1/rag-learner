@@ -7,6 +7,8 @@ POST /api/sessions          — create new session
 DELETE /api/sessions/{id}   — delete session + all messages
 GET  /api/sessions/{id}/messages — get message history
 """
+from __future__ import annotations
+
 import json
 from typing import Optional, List
 from datetime import datetime, timezone
@@ -28,12 +30,12 @@ router = APIRouter(prefix="/api", tags=["chat"])
 
 class ChatRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
-    session_id: Optional[int] = None
-    doc_ids: Optional[List[int]] = None  # Filter retrieval to specific docs
+    session_id: Optional[str] = None
+    doc_ids: Optional[List[str]] = None  # Filter retrieval to specific docs
 
 
 class SessionOut(BaseModel):
-    id: int
+    id: str
     title: str
     created_at: datetime
     updated_at: datetime
@@ -43,8 +45,8 @@ class SessionOut(BaseModel):
 
 
 class MessageOut(BaseModel):
-    id: int
-    session_id: int
+    id: str
+    session_id: str
     role: str
     content: str
     sources: str
@@ -55,7 +57,7 @@ class MessageOut(BaseModel):
 
 
 class SourceChunk(BaseModel):
-    chunk_id: Optional[int]
+    chunk_id: Optional[str] = None
     chroma_id: str
     text: str
     score: float
@@ -64,20 +66,9 @@ class SourceChunk(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    session_id: int
+    session_id: str
     answer: str
     sources: List[SourceChunk]
-
-
-# ── Helper ─────────────────────────────────────────────────────────────────────
-
-def _resolve_db_chunk_ids(chroma_ids: List[str]) -> List[int]:
-    """Map chroma IDs back to SQLite Chunk IDs."""
-    with Session(engine) as db:
-        chunks = db.exec(
-            select(Chunk).where(Chunk.chroma_id.in_(chroma_ids))
-        ).all()
-        return [c.id for c in chunks]
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
@@ -97,17 +88,16 @@ async def chat(request: ChatRequest):
     # Get LLM response
     answer = await complete(messages)
 
-    # Persist messages
+    # Persist messages - store chroma_ids directly to avoid DB lookup
     save_message(session_id, "user", request.query)
-    chunk_ids = _resolve_db_chunk_ids([c["chroma_id"] for c in chunks])
-    save_message(session_id, "assistant", answer, source_chunk_ids=chunk_ids)
+    save_message(session_id, "assistant", answer, source_metadata=chunks)
 
     return ChatResponse(
         session_id=session_id,
         answer=answer,
         sources=[
             SourceChunk(
-                chunk_id=None,
+                chunk_id=c["metadata"].get("chunk_id") if "metadata" in c else None,
                 chroma_id=c["chroma_id"],
                 text=c["text"],
                 score=c.get("score", 0.0),
@@ -189,8 +179,7 @@ async def chat_stream(websocket: WebSocket):
 
             # Persist
             save_message(session_id, "user", query)
-            chunk_ids = _resolve_db_chunk_ids([c["chroma_id"] for c in chunks])
-            save_message(session_id, "assistant", answer, source_chunk_ids=chunk_ids)
+            save_message(session_id, "assistant", answer, source_metadata=chunks)
 
             await websocket.send_json({"type": "done", "session_id": session_id})
 
@@ -223,7 +212,7 @@ def create_session(db: Session = Depends(get_session)):
 
 
 @router.delete("/sessions/{session_id}", status_code=204)
-def delete_session(session_id: int, db: Session = Depends(get_session)):
+def delete_session(session_id: str, db: Session = Depends(get_session)):
     s = db.get(ChatSession, session_id)
     if not s:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -235,7 +224,7 @@ def delete_session(session_id: int, db: Session = Depends(get_session)):
 
 
 @router.get("/sessions/{session_id}/messages", response_model=List[MessageOut])
-def get_messages(session_id: int, db: Session = Depends(get_session)):
+def get_messages(session_id: str, db: Session = Depends(get_session)):
     s = db.get(ChatSession, session_id)
     if not s:
         raise HTTPException(status_code=404, detail="Session not found")

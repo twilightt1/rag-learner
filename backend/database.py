@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
 import json
@@ -27,7 +30,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 # ── Models ────────────────────────────────────────────────────────────────────
 
 class Document(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     filename: str
     source_type: str          # pdf | md | url | code
     source_path: str          # local path or original URL
@@ -39,8 +42,8 @@ class Document(SQLModel, table=True):
 
 
 class Chunk(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    doc_id: int = Field(foreign_key="document.id")
+    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    doc_id: str = Field(foreign_key="document.id")
     text: str
     page_num: Optional[int] = None
     chunk_index: int = 0
@@ -50,35 +53,35 @@ class Chunk(SQLModel, table=True):
 
 
 class ChatSession(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     title: str = "New session"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Message(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    session_id: int = Field(foreign_key="chatsession.id")
+    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    session_id: str = Field(foreign_key="chatsession.id")
     role: str                  # user | assistant
     content: str
     sources: str = "[]"        # JSON list of chunk IDs
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    def get_sources(self) -> List[int]:
+    def get_sources(self) -> List[str]:
         return json.loads(self.sources)
 
-    def set_sources(self, ids: List[int]):
+    def set_sources(self, ids: List[str]):
         self.sources = json.dumps(ids)
 
 
 class Quiz(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     doc_ids: str = "[]"        # JSON list of doc IDs
     questions: str = "[]"      # JSON list of question dicts
     quiz_type: str = "mcq"     # mcq | flashcard
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    def get_doc_ids(self) -> List[int]:
+    def get_doc_ids(self) -> List[str]:
         return json.loads(self.doc_ids)
 
     def get_questions(self) -> list:

@@ -106,9 +106,9 @@ export default function KBBrowserPage() {
                   <div key={c.id || i} className="surface-card p-4 animate-fade-in hover:border-dark-elevated transition-colors">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-medium text-gray-500">#{i + 1}</span>
-                      {c.metadata?.page_num && (
+                      {c.page_num && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-dark-elevated text-gray-400">
-                          p.{c.metadata.page_num}
+                          p.{c.page_num}
                         </span>
                       )}
                       {c.token_count && (
