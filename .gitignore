@@ -15,3 +15,4 @@ dist/
 docs/
 venv/
 CLAUDE.md
+requirements-dev.txt
