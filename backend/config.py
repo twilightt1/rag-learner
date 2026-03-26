@@ -9,9 +9,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 class Settings(BaseSettings):
     # LLM
-    openrouter_api_key: str = ""
-    openrouter_model: str = "google/gemma-3-27b-it:free"
-    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    llm_api_key: str = ""
+    llm_model: str = "google/gemma-3-27b-it:free"
+    llm_base_url: str = "https://openrouter.ai/api/v1"
 
     # Embedding & reranking models
     embed_model: str = "all-MiniLM-L6-v2"

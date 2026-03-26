@@ -18,8 +18,8 @@ HEADERS = {
 
 def _get_headers() -> Dict[str, str]:
     h = dict(HEADERS)
-    if settings.openrouter_api_key:
-        h["Authorization"] = f"Bearer {settings.openrouter_api_key}"
+    if settings.llm_api_key:
+        h["Authorization"] = f"Bearer {settings.llm_api_key}"
     return h
 
 
@@ -33,7 +33,7 @@ async def complete(
     """
     Non-streaming chat completion. Returns the full response string.
     """
-    model = model or settings.openrouter_model
+    model = model or settings.llm_model
     payload = {
         "model": model,
         "messages": messages,
@@ -63,7 +63,7 @@ async def stream_complete(
     """
     Streaming chat completion. Yields text delta strings as they arrive.
     """
-    model = model or settings.openrouter_model
+    model = model or settings.llm_model
     payload = {
         "model": model,
         "messages": messages,

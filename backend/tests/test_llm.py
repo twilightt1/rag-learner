@@ -57,8 +57,8 @@ async def test_complete_uses_correct_payload(mock_httpx_client):
 
 async def test_complete_includes_api_key(mock_httpx_client, mocker):
     """complete() includes Authorization header if API key set."""
-    from backend.config import get_settings
-    mocker.patch.object(get_settings(), 'openrouter_api_key', 'test-key-123')
+    from backend.config import settings
+    mocker.patch.object(settings, 'llm_api_key', 'test-key-123')
 
     mock_response = Mock()
     mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
