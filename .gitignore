@@ -10,9 +10,3 @@ node_modules/
 dist/
 .vite/
 *.egg-info/
-
-*.sh
-docs/
-venv/
-CLAUDE.md
-requirements-dev.txt
